@@ -25,19 +25,16 @@
             #folhaCanvas { background: white; border: 1px solid #999; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-width: 100%; height: auto; }
             
             .btn-print { background: #28a745; color: white; border: none; padding: 15px 30px; font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer; margin-bottom: 10px; width: 100%; }
+            .btn-download { background: #007bff; color: white; border: none; padding: 10px; font-size: 14px; font-weight: bold; border-radius: 8px; cursor: pointer; margin-bottom: 10px; width: 100%; }
+            .btn-limpar { background: #6c757d; color: white; border: none; padding: 5px; font-size: 11px; border-radius: 4px; cursor: pointer; margin-top: 10px; }
             .label-upload { background: #333; color: white; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-left: 10px; font-weight: bold; font-size: 14px; }
         }
 
         @media print {
             body { margin: 0; padding: 0; background: none; }
-            .menu-layout, .painel-input, .btn-print, .label-upload, .galeria-modelos, h2 { display: none !important; }
+            .menu-layout, .painel-input, .btn-print, .btn-download, .label-upload, .galeria-modelos, h2, .btn-limpar { display: none !important; }
             #folhaCanvas { display: block; border: none; margin: 0; }
-            .print-portrait { width: 210mm; height: 297mm; }
-            .print-landscape { width: 297mm; height: 210mm; }
         }
-        
-        .page-portrait { @page { size: A4 portrait; margin: 0; } }
-        .page-landscape { @page { size: A4 landscape; margin: 0; } }
     </style>
 </head>
 <body class="page-portrait">
@@ -46,36 +43,27 @@
 
     <div class="galeria-modelos">
         <strong style="color:#2b388f; margin-right: 10px;">MODELOS:</strong>
-        
         <div class="btn-modelo" onclick="escolherModelo('BaseBranca1.png')">
             <img src="BaseBranca1.png" alt="Branca">
             <span>BRANCA</span>
         </div>
-
         <div class="btn-modelo" onclick="escolherModelo('DIaD2.png')">
             <img src="DIaD2.png" alt="Dia D">
             <span>DIA D</span>
         </div>
-
         <div class="btn-modelo" onclick="escolherModelo('OfertaEspecial4.png')">
             <img src="OfertaEspecial4.png" alt="Oferta">
             <span>OFERTA</span>
         </div>
-
         <div class="btn-modelo" onclick="escolherModelo('NaoOferta3.png')">
             <img src="NaoOferta3.png" alt="Nao Oferta">
             <span>NÃO OFERTA</span>
         </div>
-
         <div class="btn-modelo" onclick="escolherModelo('Real16.png')">
             <img src="Real16.png" alt="16 Unid">
             <span>16 UNID</span>
         </div>
-
-        <label class="label-upload">
-            + OUTRO
-            <input type="file" id="loader" accept="image/*" style="display:none">
-        </label>
+        <label class="label-upload">+ OUTRO<input type="file" id="loader" accept="image/*" style="display:none"></label>
     </div>
 
     <div class="menu-layout">
@@ -88,9 +76,13 @@
     </div>
 
     <div class="container">
-        <div class="painel-input" id="inputsContainer"></div>
+        <div class="painel-input">
+            <div id="inputsContainer"></div>
+            <button class="btn-limpar" onclick="limparTudo()">Limpar todos os campos</button>
+        </div>
         <div class="painel-preview">
             <button class="btn-print" onclick="window.print()">IMPRIMIR AGORA</button>
+            <button class="btn-download" onclick="baixarImagem()">SALVAR COMO IMAGEM (PNG)</button>
             <canvas id="folhaCanvas" class="print-portrait"></canvas>
         </div>
     </div>
@@ -123,19 +115,18 @@
 
     function mudarLayout(btn, total, cols, lins, orient) {
         gradeAtual = { total, cols, lins, orientacao: orient };
-        document.body.className = (orient === 'landscape') ? 'page-landscape' : 'page-portrait';
-        canvasA4.className = (orient === 'landscape') ? 'print-landscape' : 'print-portrait';
         canvasA4.width = (orient === 'landscape') ? 3508 : 2480;
         canvasA4.height = (orient === 'landscape') ? 2480 : 3508;
-
-        // Carrega automaticamente a arte se mudar para o formato de 16
-        if (total === 16) {
-            escolherModelo('Real16.png');
-        }
-
+        if (total === 16) escolherModelo('Real16.png');
         document.querySelectorAll('.btn-layout').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         gerarInputs();
+        desenharGrade();
+    }
+
+    // SALVA OS DADOS AUTOMATICAMENTE ENQUANTO DIGITA
+    function salvarDados(id, campo, valor) {
+        localStorage.setItem(`real_${id}_${campo}`, valor);
         desenharGrade();
     }
 
@@ -143,20 +134,39 @@
         const container = document.getElementById('inputsContainer');
         container.innerHTML = '<h4>Dados das Etiquetas</h4>';
         for (let i = 1; i <= gradeAtual.total; i++) {
+            // Recupera o que estava salvo no PC
+            const sNome = localStorage.getItem(`real_${i}_nome`) || "";
+            const sPreco = localStorage.getItem(`real_${i}_preco`) || "";
+            const sCod = localStorage.getItem(`real_${i}_cod`) || "";
+
             container.innerHTML += `
                 <div class="prod-box">
                     <small>Item ${i}</small>
-                    <input type="text" id="p${i}_nome" placeholder="Nome do Produto" oninput="desenharGrade()">
-                    <input type="text" id="p${i}_preco" placeholder="Preço" oninput="desenharGrade()">
-                    <input type="text" id="p${i}_cod" placeholder="Código" oninput="desenharGrade()">
+                    <input type="text" id="p${i}_nome" value="${sNome}" placeholder="Nome do Produto" oninput="salvarDados(${i}, 'nome', this.value)">
+                    <input type="text" id="p${i}_preco" value="${sPreco}" placeholder="Preço" oninput="salvarDados(${i}, 'preco', this.value)">
+                    <input type="text" id="p${i}_cod" value="${sCod}" placeholder="Código" oninput="salvarDados(${i}, 'cod', this.value)">
                 </div>`;
         }
+    }
+
+    function limparTudo() {
+        if(confirm("Deseja apagar todos os nomes e preços digitados?")) {
+            localStorage.clear();
+            gerarInputs();
+            desenharGrade();
+        }
+    }
+
+    function baixarImagem() {
+        const link = document.createElement('a');
+        link.download = 'Etiquetas_Farmacia_Real.png';
+        link.href = canvasA4.toDataURL('image/png');
+        link.click();
     }
 
     function desenharGrade() {
         ctxA4.fillStyle = "white";
         ctxA4.fillRect(0, 0, canvasA4.width, canvasA4.height);
-
         const larguraItem = canvasA4.width / gradeAtual.cols;
         const alturaItem = canvasA4.height / gradeAtual.lins;
         const baseRef = (gradeAtual.orientacao === 'landscape') ? 1754 : 826;
@@ -167,10 +177,7 @@
             const lin = Math.floor(i / gradeAtual.cols);
             const x = col * larguraItem;
             const y = lin * alturaItem;
-            
-            if (imgBase.src) {
-                ctxA4.drawImage(imgBase, x, y, larguraItem, alturaItem);
-            }
+            if (imgBase.src) ctxA4.drawImage(imgBase, x, y, larguraItem, alturaItem);
 
             const id = i + 1;
             const nome = (document.getElementById(`p${id}_nome`)?.value || "").toUpperCase();
@@ -181,52 +188,21 @@
             let fSizeNome, posYNome, fSizePreco, posYPreco, posYCod, limiteChar, lineJump;
 
             if (gradeAtual.total === 1) {
-                fSizeNome = 120;
-                posYNome = y + (440 * esc); 
-                fSizePreco = 220;
-                posYPreco = y + (990 * esc); 
-                posYCod = y + (1150 * esc);
-                limiteChar = 8;
-                lineJump = 130;
+                fSizeNome = 120; posYNome = y + (440 * esc); fSizePreco = 220; posYPreco = y + (990 * esc); posYCod = y + (1150 * esc); limiteChar = 8; lineJump = 130;
             } else if (gradeAtual.total === 2) {
-                fSizeNome = 160;
-                posYNome = y + (980 * esc); 
-                fSizePreco = 430;
-                posYPreco = y + (2080 * esc); 
-                posYCod = y + (2320 * esc);
-                limiteChar = 13;
-                lineJump = 160;
+                fSizeNome = 160; posYNome = y + (980 * esc); fSizePreco = 430; posYPreco = y + (2080 * esc); posYCod = y + (2320 * esc); limiteChar = 13; lineJump = 160;
             } else if (gradeAtual.total === 4) {
-                fSizeNome = 85;
-                posYNome = y + (550 * esc);
-                fSizePreco = 300;
-                posYPreco = y + (1150 * esc);
-                posYCod = y + (1300 * esc);
-                limiteChar = 15;
-                lineJump = 90;
+                fSizeNome = 85; posYNome = y + (550 * esc); fSizePreco = 300; posYPreco = y + (1150 * esc); posYCod = y + (1300 * esc); limiteChar = 15; lineJump = 90;
             } else if (gradeAtual.total === 16) {
-                fSizeNome = 75;
-                posYNome = y + (450 * esc);
-                fSizePreco = 165;
-                posYPreco = y + (950 * esc);
-                posYCod = y + (1090 * esc);
-                limiteChar = 13;
-                lineJump = 75;
+                fSizeNome = 45; posYNome = y + (420 * esc); fSizePreco = 180; posYPreco = y + (850 * esc); posYCod = y + (980 * esc); limiteChar = 20; lineJump = 45;
             } else {
-                fSizeNome = 62;
-                posYNome = y + (500 * esc);
-                fSizePreco = 230;
-                posYPreco = y + (980 * esc);
-                posYCod = y + (1100 * esc);
-                limiteChar = 18;
-                lineJump =670;
+                fSizeNome = 62; posYNome = y + (500 * esc); fSizePreco = 230; posYPreco = y + (980 * esc); posYCod = y + (1100 * esc); limiteChar = 18; lineJump = 60;
             }
 
             ctxA4.fillStyle = "#2b388f";
             ctxA4.font = `bold ${fSizeNome * esc}px Arial`;
             const palavras = nome.split(' ');
-            let linha = '';
-            let currentY = posYNome;
+            let linha = '', currentY = posYNome;
             for(let n=0; n<palavras.length; n++){
                 if((linha + palavras[n]).length > limiteChar) {
                     ctxA4.fillText(linha.trim(), x + (larguraItem/2), currentY);
